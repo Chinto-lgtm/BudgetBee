@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # BudgetBee: Halal Edition 🐝
 
 BudgetBee is a specialized family finance application designed to instill Islamic financial principles in children through real-time feedback, automated splitting, and AI-powered mindfulness.
@@ -56,3 +57,6 @@ The app operates on the principle of *Barakah* (blessing) — where money is see
 
 ## 📜 Ethical Guidelines
 BudgetBee encourages "Wasatiyyah" (moderation) in spending and highlights that "Wealth does not decrease by giving in charity."
+=======
+# BudgetBee
+>>>>>>> 0cde85c5bd67304cc1d8176656325132998b5baf
