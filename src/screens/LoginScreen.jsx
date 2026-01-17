@@ -1,17 +1,20 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { useFamily } from '../contexts/FamilyContext';
-import { COLORS } from '../constants/constants'; // ✅ Fixed Import Path
+import { COLORS } from '../constants/constants';
 
-export default function LoginScreen() { // ✅ Default Export
+export default function LoginScreen() {
   const { login, signUpParent } = useFamily();
-  // ✅ Fixed: Removed TypeScript generics <'PARENT' | 'CHILD'>
   const [role, setRole] = useState('CHILD');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
 
   const handleEnter = () => {
-    login({ identifier: role === 'PARENT' ? email : username, role });
+    // --- MOCK LOGIN LOGIC ---
+    // If you don't type anything, it defaults to these demo users
+    const id = role === 'PARENT' ? (email || 'parent@demo.com') : (username || 'lil_bee');
+    
+    login({ identifier: id, role });
   };
 
   return (

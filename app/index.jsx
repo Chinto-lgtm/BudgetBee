@@ -5,7 +5,7 @@ import LoginScreen from '../src/screens/LoginScreen'; // Ensure default export
 import ChildDashboard from '../src/screens/ChildDashboard';
 import ParentDashboard from '../src/screens/ParentDashboard';
 import ParentSettings from '../src/screens/ParentSettings';
-import { COLORS, SHADOWS } from '../src/constants/Colors';
+import { COLORS, SHADOWS } from '../src/constants/constants';
 
 export default function AppContent() {
   const { currentUser, logout, isLoading } = useFamily();
