@@ -1,14 +1,16 @@
-
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, FlatList, ActivityIndicator, Alert } from 'react-native';
 import { useFamily } from '../contexts/FamilyContext';
-import { COLORS, SPACING, SHADOWS } from '../constants';
+import { COLORS, SPACING, SHADOWS } from '../constants/constants'; // ✅ Fixed Import Path
 
-export const ParentDashboard = () => {
+export default function ParentDashboard() { // ✅ Default Export
   const { childProfile, pendingRequests, resolveRequest, config, grantBarakahBonus, transactions } = useFamily();
   const [showCode, setShowCode] = useState(false);
-  const [resolvingId, setResolvingId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'REQUESTS' | 'LEDGER'>('REQUESTS');
+  
+  // ✅ Fixed: Removed TypeScript generics <string | null>
+  const [resolvingId, setResolvingId] = useState(null);
+  // ✅ Fixed: Removed TypeScript generics <'REQUESTS' | 'LEDGER'>
+  const [activeView, setActiveView] = useState('REQUESTS');
 
   const handleBarakahBonus = async () => {
     if (!childProfile || !config) return;
@@ -16,7 +18,8 @@ export const ParentDashboard = () => {
     Alert.alert("Bonus Granted", `JazakAllah Khair! $${config.barakahBonusAmount} added to wallet.`);
   };
 
-  const handleResolve = async (id: string, approved: boolean) => {
+  // ✅ Fixed: Removed type annotations (id: string, approved: boolean)
+  const handleResolve = async (id, approved) => {
     setResolvingId(id);
     await resolveRequest(id, approved);
     setResolvingId(null);
@@ -24,7 +27,8 @@ export const ParentDashboard = () => {
 
   const isBarakahEligible = childProfile && config ? childProfile.streakDays >= config.barakahThreshold : false;
 
-  const renderTransaction = ({ item }: { item: any }) => {
+  // ✅ Fixed: Removed type annotation ({ item: any })
+  const renderTransaction = ({ item }) => {
     const isOut = item.type === 'SADAQAH_GIVEN' || item.type === 'WITHDRAWAL';
     return (
       <View style={styles.transItem}>

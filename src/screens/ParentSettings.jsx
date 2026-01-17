@@ -1,10 +1,9 @@
-
 import React from 'react';
 import { View, Text, StyleSheet, Switch, TextInput, ScrollView } from 'react-native';
 import { useFamily } from '../contexts/FamilyContext';
-import { COLORS } from '../constants';
+import { COLORS } from '../constants/constants'; // ✅ Fixed Import Path
 
-export const ParentSettings = () => {
+export default function ParentSettings() { // ✅ Default Export
   const { config, updateConfig } = useFamily();
 
   if (!config) return null;

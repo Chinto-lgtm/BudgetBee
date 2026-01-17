@@ -1,12 +1,12 @@
-
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 import { useFamily } from '../contexts/FamilyContext';
-import { COLORS } from '../constants';
+import { COLORS } from '../constants/constants'; // ✅ Fixed Import Path
 
-export const LoginScreen = () => {
+export default function LoginScreen() { // ✅ Default Export
   const { login, signUpParent } = useFamily();
-  const [role, setRole] = useState<'PARENT' | 'CHILD'>('CHILD');
+  // ✅ Fixed: Removed TypeScript generics <'PARENT' | 'CHILD'>
+  const [role, setRole] = useState('CHILD');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
 
@@ -44,6 +44,7 @@ export const LoginScreen = () => {
           placeholder={role === 'PARENT' ? "parent@me.com" : "lil_bee"}
           value={role === 'PARENT' ? email : username}
           onChangeText={role === 'PARENT' ? setEmail : setUsername}
+          autoCapitalize="none"
         />
         
         <TouchableOpacity style={styles.submitBtn} onPress={handleEnter}>

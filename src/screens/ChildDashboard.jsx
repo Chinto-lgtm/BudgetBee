@@ -1,28 +1,28 @@
-
-import React, { useState, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, Alert, FlatList, Dimensions } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal, ActivityIndicator, Alert, FlatList } from 'react-native';
+import * as ImagePicker from 'expo-image-picker'; // ✅ Added for Native Camera
 import { useFamily } from '../contexts/FamilyContext';
-import { COLORS, SPACING, SHADOWS, WISDOM_QUOTES } from '../constants';
+import { COLORS, SPACING, SHADOWS } from '../constants/constants'; // ✅ Fixed path
+import { WISDOM_QUOTES } from '../constants/constants'; // Assumed exported from same file
 import { checkNiyat, verifyTaskImage } from '../services/geminiService';
 import { calculateSplits } from '../services/TransactionService';
 
-export const ChildDashboard = () => {
+export default function ChildDashboard() {
   const { config, currentUser, transactions, processExternalIncome, addPendingRequest } = useFamily();
   
-  const [modalType, setModalType] = useState<'NONE' | 'NIYAT' | 'TASK' | 'INCOME' | 'HISTORY' | 'GIVE'>('NONE');
+  // ✅ Fixed: Removed TypeScript generics <'NONE' | ...>
+  const [modalType, setModalType] = useState('NONE'); 
   const [loading, setLoading] = useState(false);
   const [amountInput, setAmountInput] = useState('');
   const [descriptionInput, setDescriptionInput] = useState('');
   const [aiAdvice, setAiAdvice] = useState('');
-  const [taskResult, setTaskResult] = useState<{confidence: number, feedback: string} | null>(null);
+  const [taskResult, setTaskResult] = useState(null); // ✅ Fixed: Removed TS type definition
   
-  // Hidden input bridge for real-time picking
-  const fileInputRef = useRef<any>(null);
-
   const quote = useMemo(() => WISDOM_QUOTES[Math.floor(Math.random() * WISDOM_QUOTES.length)], []);
 
   if (!currentUser || !config) return null;
 
+  // --- Logic: App Freeze ---
   if (config.isAppFrozen) {
     return (
       <View style={styles.frozenContainer}>
@@ -33,6 +33,7 @@ export const ChildDashboard = () => {
     );
   }
 
+  // --- Logic: Income Split ---
   const handleIncomeSplit = () => {
     const val = parseFloat(amountInput);
     if (isNaN(val) || val <= 0) return;
@@ -44,6 +45,7 @@ export const ChildDashboard = () => {
     setAmountInput('');
   };
 
+  // --- Logic: Niyat Check ---
   const handleNiyatCheck = async () => {
     if (!descriptionInput) return;
     setLoading(true);
@@ -52,34 +54,41 @@ export const ChildDashboard = () => {
     setLoading(false);
   };
 
-  const triggerCamera = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
+  // --- Logic: Camera (Mobile Native) ---
+  // ✅ Replaced web file input with Expo Image Picker
+  const triggerCamera = async () => {
+    // 1. Ask for permission
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert("Permission Needed", "Camera access is required for task verification.");
+      return;
     }
-  };
 
-  const handleFileChange = async (event: any) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    // 2. Open Camera
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      quality: 0.5, // Lower quality is better for AI upload speed
+      base64: true, // Gemini needs Base64
+    });
 
-    setLoading(true);
-    setModalType('TASK'); // Ensure modal is open to show progress
-
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const base64 = (e.target?.result as string).split(',')[1];
+    // 3. Process Image
+    if (!result.canceled) {
+      setLoading(true);
+      setModalType('TASK'); // Keep modal open to show loading
+      
       try {
-        const result = await verifyTaskImage(base64, "Household Chores");
-        setTaskResult(result);
+        const base64 = result.assets[0].base64;
+        const res = await verifyTaskImage(base64, "Household Chores");
+        setTaskResult(res);
       } catch (err) {
-        Alert.alert("Verification Error", "Could not analyze the image. Please try again.");
+        Alert.alert("Error", "Could not analyze the image. Please try again.");
       } finally {
         setLoading(false);
       }
-    };
-    reader.readAsDataURL(file);
+    }
   };
 
+  // --- Logic: Submit Task ---
   const submitTaskForApproval = async () => {
     if (!taskResult) return;
     setLoading(true);
@@ -98,6 +107,7 @@ export const ChildDashboard = () => {
     Alert.alert("Task Submitted", "JazakAllah! Your parent will review the AI score and grant your allowance.");
   };
 
+  // --- Logic: Discharge Sadaqah ---
   const handleDischargeRequest = async () => {
     if (currentUser.sadaqahBalance <= 0) {
       Alert.alert("Jar is Empty", "Continue saving to fill your Sadaqah jar.");
@@ -117,7 +127,8 @@ export const ChildDashboard = () => {
     Alert.alert("Request Sent", "Your parent has been notified to send your Sadaqah to those in need!");
   };
 
-  const renderTransaction = ({ item }: { item: any }) => {
+  // ✅ Fixed: Removed TypeScript type annotation from params
+  const renderTransaction = ({ item }) => {
     const isOut = item.type === 'SADAQAH_GIVEN' || item.type === 'WITHDRAWAL';
     return (
       <View style={styles.transItem}>
@@ -137,15 +148,7 @@ export const ChildDashboard = () => {
 
   return (
     <View style={styles.container}>
-      {/* Hidden File Input for Real Time Picking */}
-      <input 
-        type="file" 
-        accept="image/*" 
-        capture="environment" 
-        ref={fileInputRef} 
-        style={{ display: 'none' }} 
-        onChange={handleFileChange} 
-      />
+      {/* ✅ Removed <input type="file"> entirely */}
 
       <View style={styles.wisdomCard}>
         <Text style={styles.wisdomLabel}>DAILY INTENTION</Text>
