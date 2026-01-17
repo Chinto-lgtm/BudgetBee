@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   doc, 
   onSnapshot, 
@@ -9,78 +8,68 @@ import {
   where,
   getDoc,
   deleteDoc,
-  addDoc,
-  orderBy
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-auth.js";
-import { db, auth } from '../firebaseConfig';
-import { FamilyConfig, UserProfile, PendingRequest, UserRole, Transaction } from '../types';
+  addDoc
+} from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
+
+// Ensure these paths match your actual folder structure
+import { db, auth } from '../config/firebaseConfig';
 import { applyIncomeToUser, calculateSplits } from '../services/TransactionService';
 
-interface FamilyContextType {
-  config: FamilyConfig | null;
-  childProfile: UserProfile | null;
-  currentUser: UserProfile | null;
-  pendingRequests: PendingRequest[];
-  transactions: Transaction[];
-  // Fix: Added password as an optional property to satisfy the call in components/LoginScreen.tsx
-  login: (creds: { identifier: string; role: UserRole; password?: string }) => Promise<void>;
-  signUpParent: (data: { email: string; name: string }) => Promise<void>;
-  signUpChild: (data: { familyCode: string; username: string; name: string }) => Promise<void>;
-  logout: () => void;
-  updateConfig: (newConfig: Partial<FamilyConfig>) => Promise<void>;
-  updateChildProfile: (newProfile: Partial<UserProfile>) => Promise<void>;
-  addPendingRequest: (req: Omit<PendingRequest, 'id' | 'timestamp' | 'familyCode'>) => Promise<void>;
-  resolveRequest: (id: string, approved: boolean) => Promise<void>;
-  processExternalIncome: (amount: number) => Promise<void>;
-  grantBarakahBonus: () => Promise<void>;
-  isLoading: boolean;
-}
+const FamilyContext = createContext();
 
-const FamilyContext = createContext<FamilyContextType | undefined>(undefined);
-
-export const FamilyProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [config, setConfig] = useState<FamilyConfig | null>(null);
-  const [childProfile, setChildProfile] = useState<UserProfile | null>(null);
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
-  const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+export const FamilyProvider = ({ children }) => {
+  const [config, setConfig] = useState(null);
+  const [childProfile, setChildProfile] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 1. Auth & Data Sync Listener
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
         const userDocRef = doc(db, 'users', user.uid);
         onSnapshot(userDocRef, (snapshot) => {
           if (snapshot.exists()) {
-            const userData = snapshot.data() as UserProfile;
+            const userData = snapshot.data();
             setCurrentUser(userData);
             
             if (userData.familyCode) {
-              onSnapshot(doc(db, 'family_configs', userData.familyCode), (cs) => setConfig(cs.data() as FamilyConfig));
+              // Listen to Global Family Config (Splits/Locks)
+              onSnapshot(doc(db, 'family_configs', userData.familyCode), (cs) => {
+                if (cs.exists()) setConfig(cs.data());
+              });
               
+              // Listen to Pending Requests
               const reqsQuery = query(collection(db, 'requests'), where('familyCode', '==', userData.familyCode));
               onSnapshot(reqsQuery, (rs) => {
-                const r: PendingRequest[] = [];
-                rs.forEach(d => r.push({ ...d.data(), id: d.id } as PendingRequest));
+                const r = [];
+                rs.forEach(d => r.push({ ...d.data(), id: d.id }));
                 setPendingRequests(r.sort((a, b) => b.timestamp - a.timestamp));
               });
 
+              // Listen to Transaction Ledger
               const transQuery = query(
                 collection(db, 'transactions'), 
                 where('familyCode', '==', userData.familyCode)
               );
               onSnapshot(transQuery, (ts) => {
-                const t: Transaction[] = [];
-                ts.forEach(d => t.push({ ...d.data(), id: d.id } as Transaction));
+                const t = [];
+                ts.forEach(d => t.push({ ...d.data(), id: d.id }));
                 setTransactions(t.sort((a, b) => b.timestamp - a.timestamp));
               });
 
+              // If Parent, also watch the Child's specific profile
               if (userData.role === 'PARENT') {
                 const childrenQuery = query(collection(db, 'users'), where('familyCode', '==', userData.familyCode), where('role', '==', 'CHILD'));
                 onSnapshot(childrenQuery, (snap) => {
-                  if (!snap.empty) setChildProfile(snap.docs[0].data() as UserProfile);
+                  if (!snap.empty) setChildProfile(snap.docs[0].data());
                 });
+              } else {
+                // If Child, my profile is the current user
+                setChildProfile(userData);
               }
             }
           }
@@ -91,9 +80,12 @@ export const FamilyProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         setIsLoading(false);
       }
     });
+
+    return () => unsubscribeAuth();
   }, []);
 
-  const processExternalIncome = async (amount: number) => {
+  // 2. Financial Logic: Processing External Income
+  const processExternalIncome = async (amount) => {
     if (currentUser?.role === 'CHILD' && config) {
       const updated = applyIncomeToUser(currentUser, amount, config);
       const splits = calculateSplits(amount, config);
@@ -116,11 +108,12 @@ export const FamilyProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
+  // 3. Parental Logic: Granting Barakah Bonus
   const grantBarakahBonus = async () => {
     if (childProfile && config) {
       const bonus = config.barakahBonusAmount;
       await updateDoc(doc(db, 'users', childProfile.uid), {
-        walletBalance: childProfile.walletBalance + bonus
+        walletBalance: (childProfile.walletBalance || 0) + bonus
       });
       await addDoc(collection(db, 'transactions'), {
         userId: childProfile.uid,
@@ -133,11 +126,12 @@ export const FamilyProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
-  const resolveRequest = async (id: string, approved: boolean) => {
+  // 4. Request Resolution (The core "Decision" logic)
+  const resolveRequest = async (id, approved) => {
     const reqDoc = doc(db, 'requests', id);
     const snap = await getDoc(reqDoc);
     if (!snap.exists()) return;
-    const req = snap.data() as PendingRequest;
+    const req = snap.data();
 
     if (approved && config && childProfile) {
       if (req.type === 'SADAQAH_DISCHARGE') {
@@ -172,7 +166,7 @@ export const FamilyProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         });
       } else if (req.type === 'WITHDRAWAL' && req.amount) {
         await updateDoc(doc(db, 'users', childProfile.uid), {
-          savingsBalance: Math.max(0, childProfile.savingsBalance - req.amount)
+          savingsBalance: Math.max(0, (childProfile.savingsBalance || 0) - req.amount)
         });
         await addDoc(collection(db, 'transactions'), {
           userId: childProfile.uid,
@@ -187,37 +181,19 @@ export const FamilyProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     await deleteDoc(reqDoc);
   };
 
-  const login = async ({ identifier, role }: any) => {
-    // Demo login logic as actual auth isn't provided in snippets
-    console.log(`Logging in as ${role}: ${identifier}`);
-  };
-
-  const signUpParent = async (data: any) => {
-    console.log("Signing up parent", data);
-  };
-
-  const signUpChild = async (data: any) => {
-    console.log("Signing up child", data);
-  };
-
+  // 5. Utility Actions
   const logout = () => {
     auth.signOut();
     setCurrentUser(null);
   };
 
-  const updateConfig = async (newConfig: Partial<FamilyConfig>) => {
+  const updateConfig = async (newConfig) => {
     if (config) {
       await updateDoc(doc(db, 'family_configs', config.familyCode), newConfig);
     }
   };
 
-  const updateChildProfile = async (newProfile: Partial<UserProfile>) => {
-    if (childProfile) {
-      await updateDoc(doc(db, 'users', childProfile.uid), newProfile);
-    }
-  };
-
-  const addPendingRequest = async (req: Omit<PendingRequest, 'id' | 'timestamp' | 'familyCode'>) => {
+  const addPendingRequest = async (req) => {
     if (currentUser) {
       await addDoc(collection(db, 'requests'), {
         ...req,
@@ -227,11 +203,16 @@ export const FamilyProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     }
   };
 
+  // Placeholders for Auth UI
+  const login = async (creds) => console.log("Login logic goes here", creds);
+  const signUpParent = async (data) => console.log("Parent Signup", data);
+  const signUpChild = async (data) => console.log("Child Signup", data);
+
   return (
     <FamilyContext.Provider value={{ 
       config, childProfile, currentUser, pendingRequests, transactions,
       login, signUpParent, signUpChild, logout, updateConfig, 
-      updateChildProfile, addPendingRequest, resolveRequest, 
+      addPendingRequest, resolveRequest, 
       processExternalIncome, grantBarakahBonus, isLoading 
     }}>
       {children}

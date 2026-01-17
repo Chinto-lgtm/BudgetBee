@@ -1,7 +1,0 @@
-{
-  "name": "BudgetBee: Halal Edition",
-  "description": "A family finance app built on Halal principles, featuring automated Sadaqah splits, Barakah bonuses, and AI-powered mindfulness checks for children's spending.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}

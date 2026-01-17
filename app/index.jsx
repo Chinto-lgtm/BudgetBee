@@ -1,20 +1,20 @@
-
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, StatusBar, Image } from 'react-native';
-import { FamilyProvider, useFamily } from './contexts/FamilyContext';
-import { LoginScreen } from './screens/LoginScreen';
-import { ChildDashboard } from './screens/ChildDashboard';
-import { ParentDashboard } from './screens/ParentDashboard';
-import { ParentSettings } from './screens/ParentSettings';
-import { COLORS, SHADOWS } from './constants';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, ScrollView, StatusBar, ActivityIndicator } from 'react-native';
+import { useFamily } from '../src/contexts/FamilyContext';
+import LoginScreen from '../src/screens/LoginScreen'; // Ensure default export
+import ChildDashboard from '../src/screens/ChildDashboard';
+import ParentDashboard from '../src/screens/ParentDashboard';
+import ParentSettings from '../src/screens/ParentSettings';
+import { COLORS, SHADOWS } from '../src/constants/Colors';
 
-const AppContent = () => {
+export default function AppContent() {
   const { currentUser, logout, isLoading } = useFamily();
-  const [activeTab, setActiveTab] = useState<'DASH' | 'SETTINGS'>('DASH');
+  const [activeTab, setActiveTab] = useState('DASH');
 
   if (isLoading) {
     return (
       <View style={styles.centered}>
+        <ActivityIndicator size="large" color={COLORS.beeYellow} />
         <Text style={styles.loadingText}>🐝 Harvesting Barakah...</Text>
       </View>
     );
@@ -31,9 +31,7 @@ const AppContent = () => {
       {/* Brand Header */}
       <View style={styles.header}>
         <View style={styles.logoRow}>
-          <View style={styles.logoIcon}>
-            <Text style={{fontSize: 20}}>🐝</Text>
-          </View>
+          <View style={styles.logoIcon}><Text style={{fontSize: 20}}>🐝</Text></View>
           <View>
             <Text style={styles.logoText}>BUDGETBEE</Text>
             <Text style={styles.logoSub}>Halal Growth Garden</Text>
@@ -71,30 +69,21 @@ const AppContent = () => {
       )}
     </SafeAreaView>
   );
-};
-
-export default function App() {
-  return (
-    <FamilyProvider>
-      <AppContent />
-    </FamilyProvider>
-  );
 }
 
+// Reuse your styles from above...
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFFFFF' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFFFFF' },
-  loadingText: { color: COLORS.goldDark, fontWeight: '700', fontSize: 16 },
+  loadingText: { color: COLORS.goldDark, fontWeight: '700', fontSize: 16, marginTop: 10 },
   header: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    backgroundColor: 'white',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
-    ...SHADOWS.soft,
   },
   logoRow: { flexDirection: 'row', alignItems: 'center' },
   logoIcon: { 
@@ -105,7 +94,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.beeBlack
   },
-  logoText: { fontSize: 20, fontWeight: '900', color: COLORS.beeBlack, letterSpacing: -0.5 },
+  logoText: { fontSize: 20, fontWeight: '900', color: COLORS.beeBlack },
   logoSub: { fontSize: 10, fontWeight: '700', color: COLORS.emerald, marginTop: -4 },
   logoutBtn: { backgroundColor: COLORS.slateLight, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   logoutText: { color: COLORS.slate, fontWeight: 'bold', fontSize: 12 },
@@ -121,7 +110,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
     paddingBottom: 20,
-    ...SHADOWS.medium,
   },
   tabBtn: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   tabBtnActive: { borderTopWidth: 4, borderTopColor: COLORS.beeYellow },
